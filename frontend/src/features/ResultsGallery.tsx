@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection as firestoreCollection, query as firestoreQuery, orderBy as firestoreOrderBy, onSnapshot as firestoreOnSnapshot } from 'firebase/firestore';
+import { collection as firestoreCollection, query as firestoreQuery, orderBy as firestoreOrderBy, onSnapshot as firestoreOnSnapshot, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { FileText, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -9,11 +9,13 @@ interface AnalysisResult {
   status: 'processing' | 'completed' | 'error';
   result?: string;
   error?: string;
-  createdAt: any;
+  createdAt: Timestamp | null;
 }
 
 export const ResultsGallery = () => {
   const [results, setResults] = useState<AnalysisResult[]>([]);
+
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     const q = firestoreQuery(
@@ -21,13 +23,21 @@ export const ResultsGallery = () => {
       firestoreOrderBy('createdAt', 'desc')
     );
 
-    const unsubscribe = firestoreOnSnapshot(q, (snapshot) => {
-      const data: AnalysisResult[] = [];
-      snapshot.forEach((doc) => {
-        data.push({ id: doc.id, ...doc.data() } as AnalysisResult);
-      });
-      setResults(data);
-    });
+    const unsubscribe = firestoreOnSnapshot(
+      q,
+      (snapshot) => {
+        const data: AnalysisResult[] = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        } as AnalysisResult));
+        setResults(data);
+        setFetchError(null);
+      },
+      (error) => {
+        console.error('Firestore snapshot error:', error);
+        setFetchError(error.message);
+      }
+    );
 
     return () => unsubscribe();
   }, []);
@@ -35,8 +45,15 @@ export const ResultsGallery = () => {
   return (
     <div className="results-container">
       <h2 className="section-title">Recent Analyses</h2>
-      
-      {results.length === 0 ? (
+
+      {fetchError && (
+        <div className="glass-panel empty-state">
+          <AlertCircle size={32} color="var(--error-color)" />
+          <p className="error-text">Failed to load results: {fetchError}</p>
+        </div>
+      )}
+
+      {!fetchError && results.length === 0 ? (
         <div className="glass-panel empty-state">
           <FileText size={48} color="var(--surface-border)" />
           <p>No results yet. Upload an image to start.</p>

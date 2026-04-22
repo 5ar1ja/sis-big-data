@@ -1,11 +1,12 @@
 import { useState, useRef } from 'react';
-import { UploadCloud, Loader2 } from 'lucide-react';
+import { UploadCloud, Loader2, CheckCircle2 } from 'lucide-react';
 import { ref, uploadBytes } from 'firebase/storage';
 import { storage } from '../config/firebase';
 
 export const UploadPanel = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (file: File) => {
@@ -15,11 +16,13 @@ export const UploadPanel = () => {
     }
 
     setIsUploading(true);
+    setUploadSuccess(false);
     try {
       const fileName = `${Date.now()}_${file.name}`;
       const storageRef = ref(storage, `uploads/${fileName}`);
       await uploadBytes(storageRef, file);
-      // Upload successful, Firebase Cloud Function will pick it up
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 4000);
     } catch (error) {
       console.error('Upload failed:', error);
       alert('Upload failed. Please check your connection and Firebase configuration.');
@@ -59,7 +62,12 @@ export const UploadPanel = () => {
         {isUploading ? (
           <div className="upload-state">
             <Loader2 className="spinner" size={48} color="var(--primary-color)" />
-            <p>Analyzing and processing...</p>
+            <p>Uploading...</p>
+          </div>
+        ) : uploadSuccess ? (
+          <div className="upload-state">
+            <CheckCircle2 size={48} color="var(--accent-color)" />
+            <p>Uploaded! AI analysis in progress...</p>
           </div>
         ) : (
           <div className="upload-state">

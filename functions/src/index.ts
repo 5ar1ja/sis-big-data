@@ -11,7 +11,11 @@ export const processImage = onObjectFinalized(
     const filePath = event.data.name;
     const contentType = event.data.contentType;
 
-    // Only process images
+    if (!filePath) {
+      console.log("Event has no file path. Skipping.");
+      return;
+    }
+
     if (!contentType || !contentType.startsWith("image/")) {
       console.log(`File ${filePath} is not an image. Skipping.`);
       return;
@@ -19,25 +23,21 @@ export const processImage = onObjectFinalized(
 
     const bucket = admin.storage().bucket(fileBucket);
     const file = bucket.file(filePath);
+    const docRef = admin.firestore().collection("analysisResults").doc(filePath.replace(/\//g, "_"));
 
     try {
-      // Set status to processing
-      const docRef = admin.firestore().collection("analysisResults").doc(filePath.replace(/\//g, "_"));
       await docRef.set({
         filePath,
         status: "processing",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Download file to memory
       console.log(`Downloading ${filePath}...`);
       const [buffer] = await file.download();
 
-      // Analyze with Gemini
       console.log(`Analyzing ${filePath} with Gemini...`);
       const resultText = await analyzeImage(contentType, buffer);
 
-      // Save result to Firestore
       console.log(`Saving results for ${filePath}...`);
       await docRef.update({
         status: "completed",
@@ -48,14 +48,12 @@ export const processImage = onObjectFinalized(
       console.log(`Processing complete for ${filePath}.`);
     } catch (error) {
       console.error(`Error processing ${filePath}:`, error);
-      
-      // Update status to error
-      const docRef = admin.firestore().collection("analysisResults").doc(filePath.replace(/\//g, "_"));
-      await docRef.update({
+      // set() with merge so this works even if the initial set() above failed
+      await docRef.set({
         status: "error",
         error: error instanceof Error ? error.message : "Unknown error",
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      }).catch(console.error);
+      }, { merge: true }).catch(console.error);
     }
   }
 );
