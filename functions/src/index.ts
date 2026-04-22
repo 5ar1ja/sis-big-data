@@ -5,7 +5,7 @@ import { analyzeImage } from "./services/gemini.service";
 admin.initializeApp();
 
 export const processImage = onObjectFinalized(
-  { region: "us-central1" },
+  { region: "us-east1" },
   async (event) => {
     const fileBucket = event.data.bucket;
     const filePath = event.data.name;

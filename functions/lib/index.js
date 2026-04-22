@@ -38,7 +38,7 @@ const storage_1 = require("firebase-functions/v2/storage");
 const admin = __importStar(require("firebase-admin"));
 const gemini_service_1 = require("./services/gemini.service");
 admin.initializeApp();
-exports.processImage = (0, storage_1.onObjectFinalized)({ region: "us-central1" }, async (event) => {
+exports.processImage = (0, storage_1.onObjectFinalized)({ region: "us-east1" }, async (event) => {
     const fileBucket = event.data.bucket;
     const filePath = event.data.name;
     const contentType = event.data.contentType;
