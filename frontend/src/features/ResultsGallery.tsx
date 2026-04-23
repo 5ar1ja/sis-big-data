@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { collection as firestoreCollection, query as firestoreQuery, orderBy as firestoreOrderBy, onSnapshot as firestoreOnSnapshot, Timestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection as firestoreCollection, query as firestoreQuery, orderBy as firestoreOrderBy, onSnapshot as firestoreOnSnapshot, Timestamp, where as firestoreWhere } from 'firebase/firestore';
+import { db, auth } from '../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { FileText, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface AnalysisResult {
@@ -18,28 +19,46 @@ export const ResultsGallery = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    const q = firestoreQuery(
-      firestoreCollection(db, 'analysisResults'),
-      firestoreOrderBy('createdAt', 'desc')
-    );
+    let unsubscribeSnapshot: () => void;
 
-    const unsubscribe = firestoreOnSnapshot(
-      q,
-      (snapshot) => {
-        const data: AnalysisResult[] = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        } as AnalysisResult));
-        setResults(data);
-        setFetchError(null);
-      },
-      (error) => {
-        console.error('Firestore snapshot error:', error);
-        setFetchError(error.message);
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const q = firestoreQuery(
+          firestoreCollection(db, 'analysisResults'),
+          firestoreWhere('userId', '==', user.uid),
+          firestoreOrderBy('createdAt', 'desc')
+        );
+
+        unsubscribeSnapshot = firestoreOnSnapshot(
+          q,
+          (snapshot) => {
+            const data: AnalysisResult[] = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            } as AnalysisResult));
+            setResults(data);
+            setFetchError(null);
+          },
+          (error) => {
+            console.error('Firestore snapshot error:', error);
+            setFetchError(error.message);
+          }
+        );
+      } else {
+        setResults([]);
+        setFetchError("You must be logged in to view results.");
+        if (unsubscribeSnapshot) {
+          unsubscribeSnapshot();
+        }
       }
-    );
+    });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+      }
+    };
   }, []);
 
   return (

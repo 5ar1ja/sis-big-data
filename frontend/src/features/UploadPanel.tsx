@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { UploadCloud, Loader2, CheckCircle2 } from 'lucide-react';
 import { ref, uploadBytes } from 'firebase/storage';
-import { storage } from '../config/firebase';
+import { storage, auth } from '../config/firebase';
 
 export const UploadPanel = () => {
   const [isDragging, setIsDragging] = useState(false);
@@ -18,8 +18,14 @@ export const UploadPanel = () => {
     setIsUploading(true);
     setUploadSuccess(false);
     try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) {
+        alert('You must be logged in to upload files.');
+        setIsUploading(false);
+        return;
+      }
       const fileName = `${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, `uploads/${fileName}`);
+      const storageRef = ref(storage, `uploads/${userId}/${fileName}`);
       await uploadBytes(storageRef, file);
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 4000);

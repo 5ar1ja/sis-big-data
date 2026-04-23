@@ -25,9 +25,13 @@ export const processImage = onObjectFinalized(
     const file = bucket.file(filePath);
     const docRef = admin.firestore().collection("analysisResults").doc(filePath.replace(/\//g, "_"));
 
+    const pathParts = filePath.split('/');
+    const userId = pathParts.length >= 3 ? pathParts[1] : null;
+
     try {
       await docRef.set({
         filePath,
+        userId,
         status: "processing",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
