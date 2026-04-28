@@ -30,7 +30,7 @@
 - **Интеграция:** Firebase Client SDK (Auth, Storage, Firestore)
 
 ### Backend (Серверная часть)
-- **Среда выполнения:** django
+- **Среда выполнения:** Node.js 20
 - **Фреймворк:** Firebase Cloud Functions (v2)
 - **Язык:** TypeScript
 - **База данных:** Cloud Firestore (NoSQL)
